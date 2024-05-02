@@ -7,7 +7,8 @@
 /**
  * Get time
 */
-struct timespec get_time() {
+struct timespec get_time()
+{
 	struct timespec res = { 0 };
 	if (clock_gettime(CLOCK_MONOTONIC, &res) < 0) {
 		dprintf(STDERR_FILENO, "Error on clock get time\n");
@@ -19,10 +20,11 @@ struct timespec get_time() {
 /**
  * Write buf in fd at whence
 */
-void write_at(int fd, char *buf, int buf_len, int offset, int whence) {
+void write_at(int fd, char *buf, int buf_len, int offset, int whence)
+{
 	// Shift on the 2nd bloc
 	off_t before = lseek(fd, offset, whence);
-	
+
 	struct timespec start = get_time();
 
 	int w = write(fd, buf, buf_len);
@@ -32,9 +34,11 @@ void write_at(int fd, char *buf, int buf_len, int offset, int whence) {
 		close(fd);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	struct timespec end = get_time();
-	printf("Time of execution of write : %ld ns\n", (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec));
+	printf("Time of execution of write : %ld ns\n",
+	       (end.tv_sec - start.tv_sec) * 1000000000 +
+		       (end.tv_nsec - start.tv_nsec));
 
 	// Verify that the offset is up to date
 	off_t after = lseek(fd, 0, SEEK_CUR);
@@ -45,7 +49,8 @@ void write_at(int fd, char *buf, int buf_len, int offset, int whence) {
 	}
 }
 
-void read_file(int fd) {
+void read_file(int fd)
+{
 	lseek(fd, 0, SEEK_SET);
 	struct timespec start = get_time();
 
@@ -59,7 +64,6 @@ void read_file(int fd) {
 			if (i == 2048 || i == 4100 || i == 4099) {
 				dprintf(STDERR_FILENO, "Error: missplaced \\0 \n");
 				close(fd);
-				exit(EXIT_FAILURE);
 			}
 			break;
 		case '1':
@@ -100,7 +104,8 @@ void read_file(int fd) {
 	int r = read(fd, buf, 15);
 	// check the return value
 	if (r != 5) {
-		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n", r, 5);
+		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n",
+			r, 5);
 		return;
 	}
 	// check if offset is up to date
