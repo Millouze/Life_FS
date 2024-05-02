@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <time.h>
 
-struct timespec get_time() {
+struct timespec get_time()
+{
 	struct timespec res = { 0 };
 	if (clock_gettime(CLOCK_MONOTONIC, &res) < 0) {
 		dprintf(STDERR_FILENO, "Error on clock get time\n");
@@ -13,20 +14,24 @@ struct timespec get_time() {
 	return res;
 }
 
-void write_at(int fd, char *buf, int buf_len, int offset, int whence) {
+void write_at(int fd, char *buf, int buf_len, int offset, int whence)
+{
 	// Shift on the 2nd bloc
 	off_t before = lseek(fd, offset, whence);
-	
+
 	struct timespec start = get_time();
 
 	int w = write(fd, buf, buf_len + 10);
 	if (w != buf_len) {
-		dprintf(STDERR_FILENO, "Error: write return %d instead of %d\n", w, buf_len);
+		dprintf(STDERR_FILENO, "Error: write return %d instead of %d\n",
+			w, buf_len);
 		exit(EXIT_FAILURE);
 	}
-	
+
 	struct timespec end = get_time();
-	printf("Time of execution of write : %ld ns\n", (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec));
+	printf("Time of execution of write : %ld ns\n",
+	       (end.tv_sec - start.tv_sec) * 1000000000 +
+		       (end.tv_nsec - start.tv_nsec));
 
 	off_t after = lseek(fd, 0, SEEK_CUR);
 	if (before != after - buf_len) {
@@ -35,7 +40,8 @@ void write_at(int fd, char *buf, int buf_len, int offset, int whence) {
 	}
 }
 
-void read_file(int fd) {
+void read_file(int fd)
+{
 	struct timespec start = get_time();
 
 	char c = 0;
@@ -43,50 +49,52 @@ void read_file(int fd) {
 	// Check if the file is correct
 	while (read(fd, &c, 1) == 1) {
 		++i;
-		switch (c)
-		{
+		switch (c) {
 		case '\0':
 			if (i == 2048 || i == 4097 || i == 4098) {
-				dprintf("Error: missplaced \\0");
+				dprintf(STDERR_FILENO, "Error: missplaced \\0");
 				exit(EXIT_FAILURE);
 			}
 			break;
 		case '1':
 			if (i != 4097) {
-				dprintf("Error: missplaced 1");
+				dprintf(STDERR_FILENO, "Error: missplaced 1");
 				exit(EXIT_FAILURE);
 			}
 			break;
 		case '2':
 			if (i != 2048) {
-				dprintf("Error: missplaced 2");
+				dprintf(STDERR_FILENO, "Error: missplaced 2");
 				exit(EXIT_FAILURE);
 			}
 			break;
 		case EOF:
 			if (i != 4098) {
-				dprintf("Error: missplaced EOF");
+				dprintf(STDERR_FILENO, "Error: missplaced EOF");
 				exit(EXIT_FAILURE);
 			}
 			break;
 		default:
-			dprintf("Error: unexpected character");
+			dprintf(STDERR_FILENO, "Error: unexpected character");
 			exit(EXIT_FAILURE);
 		}
 	}
 	struct timespec end = get_time();
 
-	printf("Time of execution of read : %ld ns\n", (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec));
-	
+	printf("Time of execution of read : %ld ns\n",
+	       (end.tv_sec - start.tv_sec) * 1000000000 +
+		       (end.tv_nsec - start.tv_nsec));
+
 	off_t before = lseek(fd, -5, SEEK_END);
 	char buf[15] = { 0 };
-	int r = read(fd1, buf, 15);
+	int r = read(fd, buf, 15);
 	if (r != 5) {
-		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n", r, 5);
+		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n",
+			r, 5);
 		return;
 	}
 	off_t after = lseek(fd, 0, SEEK_CUR);
-	if (before != after - buf_len) {
+	if (before != after - sizeof(buf)) {
 		dprintf(STDERR_FILENO, "Error : the offset was not updatted\n");
 		exit(EXIT_FAILURE);
 	}
@@ -94,9 +102,10 @@ void read_file(int fd) {
 		dprintf(STDERR_FILENO, "Error no EOF\n");
 		return;
 	}
-	r = read(fd1, buf, 1);
+	r = read(fd, buf, 1);
 	if (r != 0) {
-		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n", r , 0);
+		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n",
+			r, 0);
 		return;
 	}
 }
