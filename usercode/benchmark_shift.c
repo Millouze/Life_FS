@@ -180,5 +180,4 @@ int main()
 
 	unlink("fichier_shift2");
 	unlink("fichier_shift1");
-	
 }
