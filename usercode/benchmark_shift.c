@@ -179,5 +179,6 @@ int main()
 	close(fd2);
 
 	unlink("fichier_shift2");
+	unlink("fichier_shift1");
 	
 }
