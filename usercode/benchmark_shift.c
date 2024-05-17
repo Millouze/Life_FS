@@ -174,4 +174,10 @@ int main()
 		       (end.tv_nsec - begin.tv_nsec));
 
 	read_file(fd1);
+
+	close(fd1);
+	close(fd2);
+
+	unlink("fichier_shift2");
+	
 }
