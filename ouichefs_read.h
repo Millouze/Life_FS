@@ -9,7 +9,6 @@
 #include <linux/types.h>
 #include "ouichefs.h"
 
-ssize_t ouichefs_read_v1(struct file *file, char __user *buff,
-				   size_t size, loff_t *off);
+ssize_t read_v1(struct file *file, char __user *buff, size_t size, loff_t *off);
 
 #endif /* _OUICHEFS_READ_H */
