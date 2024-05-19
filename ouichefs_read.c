@@ -1,4 +1,6 @@
 #include "ouichefs_read.h"
+#include "linux/buffer_head.h"
+#include "ouichefs.h"
 
 ssize_t read_v1(struct file *file, char __user *buff, size_t size, loff_t *off)
 {
@@ -7,6 +9,8 @@ ssize_t read_v1(struct file *file, char __user *buff, size_t size, loff_t *off)
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
+
+	sync_sb_info(sb, 1);
 
 	struct buffer_head *index_block = sb_bread(sb, info->index_block);
 	if (index_block == NULL) {
@@ -25,18 +29,23 @@ ssize_t read_v1(struct file *file, char __user *buff, size_t size, loff_t *off)
 	size_t first_blk = *off / sb->s_blocksize;
 	size_t start_offset = *off % sb->s_blocksize;
 
-	for (int i = first_blk; i < inode->i_blocks -1 && size_left > 0; i++) {
+	for (int i = first_blk; i < inode->i_blocks - 1 && size_left > 0; i++) {
 		uint32_t num_blk = index->blocks[i];
-		bh = sb_bread(inode->i_sb, num_blk);
+		pr_info("DEBUG: Reading block number: %d \n", num_blk);
+		bh = sb_getblk(inode->i_sb, num_blk);
+		sync_dirty_buffer(bh);
+		//bh = sb_bread(inode->i_sb, num_blk);
 		if (!bh) {
 			pr_err("Error sb_bread on block %d\n", num_blk);
 			brelse(index_block);
 			return -EIO;
 		}
+		bh_read(bh, 0);
 
 		size_t bh_size_adjusted = bh->b_size - start_offset;
 		size_t bytes_to_copy = min(size_left, bh_size_adjusted);
-		err_nb = copy_to_user(buff + size_read, bh->b_data + start_offset,	bytes_to_copy);
+		err_nb = copy_to_user(buff + size_read,
+				      bh->b_data + start_offset, bytes_to_copy);
 		if (err_nb != 0) {
 			pr_err("Error: copy_to_user failed in read v1\n");
 			brelse(bh); // Release buffer_head before returning

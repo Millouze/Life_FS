@@ -90,6 +90,7 @@ struct ouichefs_dir_block {
 
 /* superblock functions */
 int ouichefs_fill_super(struct super_block *sb, void *data, int silent);
+int sync_sb_info(struct super_block *sb, int wait);
 
 /* inode functions */
 int ouichefs_init_inode_cache(void);

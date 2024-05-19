@@ -95,7 +95,7 @@ static int ouichefs_write_inode(struct inode *inode,
 	return 0;
 }
 
-static int sync_sb_info(struct super_block *sb, int wait)
+int sync_sb_info(struct super_block *sb, int wait)
 {
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(sb);
 	struct ouichefs_sb_info *disk_sb;
