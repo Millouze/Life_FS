@@ -11,8 +11,11 @@ all:
 debug:
 	make -C $(KERNELDIR) M=$(PWD) ccflags-y+="-DDEBUG -g" modules
 
+benchmark:
+	gcc -Wall usercode/benchmark.c -o benchmark
+
 clean:
 	make -C $(KERNELDIR) M=$(PWD) clean
-	rm *.mod *.ko *.mod.o *.mod.c
+	rm *.mod *.ko *.mod.o *.mod.c *.o
 
 .PHONY: all clean
