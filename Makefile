@@ -1,12 +1,12 @@
 obj-m += ouichefs.o 
-ouichefs-objs := fs.o super.o inode.o file.o dir.o ouichefs_read.o
+ouichefs-objs := fs.o super.o inode.o file.o dir.o read.o
 
-KERNELDIR ?= /home/floflo/PNL/linux-6.5.7
+KERNELDIR ?= /home/tara/linux-6.5.7
 PWD := $(shell pwd)
 
 all:
 	make -C $(KERNELDIR) M=$(PWD) modules
-	cp ouichefs.ko ../share/
+	cp ouichefs.ko ../share/pnl
 
 debug:
 	make -C $(KERNELDIR) M=$(PWD) ccflags-y+="-DDEBUG -g" modules

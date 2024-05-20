@@ -1,58 +1,61 @@
-#include "ouichefs_read.h"
+#include "read.h"
 
-ssize_t read_v1(struct file *file, char __user *buff, size_t size, loff_t *off)
+ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
 {
-	pr_info("ouichefs_read_v1\n");
+	pr_debug("read_v1\n");
 
+	// Get struct
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
 
+	// Get the bloc with number of other bloc
 	struct buffer_head *index_block = sb_bread(sb, info->index_block);
 	if (index_block == NULL) {
 		pr_err("Error: sb_bread for index_block in read v1\n");
 		return -EIO;
 	}
-
 	struct ouichefs_file_index_block *index;
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
-	size_t size_left = size;
-	size_t size_read = 0;
-	struct buffer_head *bh;
-	int err_nb = 0;
-
+	// Init variable
+	size_t sz_read = 0;
+	size_t sz_left = size;
 	size_t first_blk = *off / sb->s_blocksize;
-	size_t start_offset = *off % sb->s_blocksize;
+	size_t bg_off = *off % sb->s_blocksize;
 
-	for (int i = first_blk; i < inode->i_blocks -1 && size_left > 0; i++) {
+	// i_blocks - 1 (index bloc)
+	for (int i = first_blk; i < inode->i_blocks - 1 && sz_left > 0; i++) {
+		// Get block to read
 		uint32_t num_blk = index->blocks[i];
-		bh = sb_bread(inode->i_sb, num_blk);
+		struct buffer_head *bh = sb_bread(inode->i_sb, num_blk);
 		if (!bh) {
 			pr_err("Error sb_bread on block %d\n", num_blk);
 			brelse(index_block);
 			return -EIO;
 		}
 
-		size_t bh_size_adjusted = bh->b_size - start_offset;
-		size_t bytes_to_copy = min(size_left, bh_size_adjusted);
-		err_nb = copy_to_user(buff + size_read, bh->b_data + start_offset,	bytes_to_copy);
-		if (err_nb != 0) {
+		// size max that we have to read in block
+		size_t sz_max = bh->b_size - bg_off;
+		size_t sz_cpy = min(sz_left, sz_max);
+		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v1\n");
-			brelse(bh); // Release buffer_head before returning
+			brelse(bh);
 			brelse(index_block);
-			return err_nb;
+			return -EFAULT;
 		}
 
-		size_left -= bytes_to_copy;
-		size_read += bytes_to_copy;
+		// update variable
+		sz_left -= sz_cpy;
+		sz_read += sz_cpy;
 
-		brelse(bh); // Release the current buffer_head
-		start_offset = 0; // Reset start_offset after the first block
+		// Release block
+		brelse(bh);
 	}
-
-	*off += size_read;
-	brelse(index_block); // Release the index_block at the end
-
-	return size_read;
+	// Offset update
+	*off += sz_read;
+	// Release block
+	brelse(index_block);
+	return sz_read;
 }
+
