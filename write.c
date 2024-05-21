@@ -2,17 +2,16 @@
 #include "bitmap.h"
 
 
-ssize_t write_v1 (struct file *f, const char __user *buf, size_t sz, loff_t *off) {
+ssize_t write_v1 (struct file *file, const char __user *buf, size_t sz, loff_t *off) {
 	pr_debug("write_v1\n");
 
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(file->f_inode->i_sb);
-	int err;
 	uint32_t nr_allocs = 0;
 
 	/* Check if the write can be completed (enough space?) */
-	if (pos + len > OUICHEFS_MAX_FILESIZE)
+	if (*off + sz > OUICHEFS_MAX_FILESIZE)
 		return -ENOSPC;
-	nr_allocs = max(pos + len, file->f_inode->i_size) / OUICHEFS_BLOCK_SIZE;
+	nr_allocs = max((size_t)(*off + sz), (size_t)file->f_inode->i_size) / OUICHEFS_BLOCK_SIZE;
 	if (nr_allocs > file->f_inode->i_blocks - 1)
 		nr_allocs -= file->f_inode->i_blocks - 1;
 	else
@@ -22,8 +21,8 @@ ssize_t write_v1 (struct file *f, const char __user *buf, size_t sz, loff_t *off
 
 	int nb_blk_a_alloue;
 	struct inode *inode = file->f_inode;
-	nb_blk_a_alloue = (off - inode->i_size) / OUICHEFS_BLOCK_SIZE;
-	if (off - inode->i_size % OUICHEFS_BLOCK_SIZE != 0)
+	nb_blk_a_alloue = (*off - inode->i_size) / OUICHEFS_BLOCK_SIZE;
+	if (((*off - inode->i_size) % OUICHEFS_BLOCK_SIZE) != 0)
 		nb_blk_a_alloue++;
 
 	nb_blk_a_alloue += sz / OUICHEFS_BLOCK_SIZE;
@@ -43,23 +42,19 @@ ssize_t write_v1 (struct file *f, const char __user *buf, size_t sz, loff_t *off
 	struct ouichefs_file_index_block *index;
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
-
-	struct ouichefs_file_index_block *index;
-	index = (struct ouichefs_file_index_block *)index_block->b_data;
-
 	for (int i = 0; i < nb_blk_a_alloue; i++) {
-		uint32_t num_blk = get_free_block(info);
+		uint32_t num_blk = get_free_block(sbi);
 		if (num_blk == 0) {
 			// gestion d'erreur
 		}
-		index->i_blocks[inode->i_blocks - 1] = num_blk;
+		index->blocks[inode->i_blocks - 1] = num_blk;
 		inode->i_blocks ++;
 	}
 
 	size_t first_blk = *off / sb->s_blocksize;
 	size_t bg_off = *off % sb->s_blocksize;
 	size_t sz_write = 0;
-	size_t sz_left = size;
+	size_t sz_left = sz;
 
 	for (int i = first_blk; i < inode->i_blocks - 1 && sz_left > 0; i++) {
 		uint32_t num_blk = index->blocks[i];
@@ -70,8 +65,8 @@ ssize_t write_v1 (struct file *f, const char __user *buf, size_t sz, loff_t *off
 			return -EIO;
 		}
 
-		size_t sz_to_write = min(OUICHEFS_BLOCK_SIZE, sz_left);
-		if(copy_from_user(bh->data + bg_off, buf + sz_write, sz_to_write == 0)) {
+		size_t sz_to_write = min(bh->b_size, sz_left);
+		if(copy_from_user(bh->b_data + bg_off, buf + sz_write, sz_to_write == 0)) {
 			/* gestion d'erreur*/
 		}
 		sz_left -= sz_to_write;
