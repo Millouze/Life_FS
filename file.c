@@ -85,6 +85,7 @@ static void ouichefs_readahead(struct readahead_control *rac)
  */
 static int ouichefs_writepage(struct page *page, struct writeback_control *wbc)
 {
+	pr_info("In ouichefs writepage\n");
 	return block_write_full_page(page, ouichefs_file_get_block, wbc);
 }
 
@@ -98,6 +99,7 @@ static int ouichefs_write_begin(struct file *file,
 				unsigned int len, struct page **pagep,
 				void **fsdata)
 {
+	pr_info("In ouchefs write begin\n");
 	struct ouichefs_sb_info *sbi = OUICHEFS_SB(file->f_inode->i_sb);
 	int err;
 	uint32_t nr_allocs = 0;
@@ -133,6 +135,7 @@ static int ouichefs_write_end(struct file *file, struct address_space *mapping,
 			      loff_t pos, unsigned int len, unsigned int copied,
 			      struct page *page, void *fsdata)
 {
+	pr_info("In ouichefs write end\n");
 	int ret;
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *ci = OUICHEFS_INODE(inode);
