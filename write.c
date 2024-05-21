@@ -23,7 +23,7 @@ ssize_t write_v1 (struct file *file, const char __user *buf, size_t sz, loff_t *
 
 	// Get the number of bloc to create
 	int nb_blk_a_alloue = 0;
-	int tmp = (*off - inode->i_size) + sz;
+	int tmp = max((size_t)((*off + sz) - inode->i_size), (size_t)0);
 	nb_blk_a_alloue = tmp / OUICHEFS_BLOCK_SIZE;
 	if ((sz % OUICHEFS_BLOCK_SIZE) != 0)
 		nb_blk_a_alloue++;
@@ -62,7 +62,7 @@ ssize_t write_v1 (struct file *file, const char __user *buf, size_t sz, loff_t *
 		}
 
 		size_t sz_to_write = min(bh->b_size, sz_left);
-		if(copy_from_user(bh->b_data + bg_off, buf + sz_write, sz_to_write == 0)) {
+		if(copy_from_user(bh->b_data + bg_off, buf + sz_write, sz_to_write) != 0) {
 			pr_err("Error: copy_from_user failed in write v1\n");
 			brelse(bh);
 			brelse(index_block);
@@ -77,11 +77,12 @@ ssize_t write_v1 (struct file *file, const char __user *buf, size_t sz, loff_t *
 		// Release block
 		brelse(bh);
 	}
-	inode->i_size += tmp;
+	if (sz_write + *off > inode->i_size)
+		inode->i_size = *off + sz_write;
 	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 	// Offset update
-	*off += tmp;
+	*off += sz_write;
 	// Release block
 	brelse(index_block);
 	return sz_write;
