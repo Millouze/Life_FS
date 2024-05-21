@@ -38,6 +38,12 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
 		// size max that we have to read in block
 		size_t sz_max = bh->b_size - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
+		if (sz_cpy == 0) {
+			pr_err("Error: nothing to read\n");
+			brelse(bh);
+			brelse(index_block);
+			return -EFAULT;
+		}
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v1\n");
 			brelse(bh);
@@ -48,6 +54,7 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
 		// update variable
 		sz_left -= sz_cpy;
 		sz_read += sz_cpy;
+		bg_off = 0;
 
 		// Release block
 		brelse(bh);
