@@ -15,6 +15,7 @@
 
 #include "ouichefs.h"
 #include "read.h"
+#include "write.h"
 #include "bitmap.h"
 
 /*
@@ -226,6 +227,7 @@ static int ouichefs_open(struct inode *inode, struct file *file)
 
 const struct file_operations ouichefs_file_ops = {
 	.read = read_v1,
+	.write = write_v1,
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
 	.llseek = generic_file_llseek,
