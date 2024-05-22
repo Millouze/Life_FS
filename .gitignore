@@ -1,0 +1,6 @@
+Makefile
+*.mod
+*.ko
+*.mod.o
+*.mod.c
+*.o

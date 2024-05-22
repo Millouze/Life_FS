@@ -1,12 +1,40 @@
 #include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
+
+#define FILE_MAXOFFSET 4194304
+#define BLK_SIZE 4096
+
+char *gen_string()
+{
+	char *alphabet =
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+	size_t alpha_len = 62;
+	short key = 0;
+	uint length = rand() % 300;
+	char *rd_string = malloc(sizeof(char) * (length + 1));
+
+	if (!rd_string) {
+		dprintf(STDERR_FILENO, "No memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	for (int n = 0; n < length; n++) {
+		key = rand() % alpha_len;
+		rd_string[n] = alphabet[key];
+	}
+	rd_string[length] = '\0';
+
+	return rd_string;
+}
 
 /**
  * Get time
-*/
+ */
 struct timespec get_time()
 {
 	struct timespec res = { 0 };
@@ -19,112 +47,133 @@ struct timespec get_time()
 
 /**
  * Write buf in fd at whence
-*/
-void write_at(int fd, char *buf, int buf_len, int offset, int whence)
+ */
+time_t sequential_writes(int fd, uint nb_iter)
 {
-	// Shift on the 2nd bloc
-	off_t before = lseek(fd, offset, whence);
+	off_t random_off = rand() % FILE_MAXOFFSET;
+	lseek(fd, random_off, SEEK_SET);
 
 	struct timespec start = get_time();
 
-	int w = write(fd, buf, buf_len);
-	// Verify the return value is correct
-	if (w != buf_len) {
-		dprintf(STDERR_FILENO, "Error: write return %d instead of %d\n", w, buf_len);
-		close(fd);
-		exit(EXIT_FAILURE);
-	}
-
-	struct timespec end = get_time();
-	printf("Time of execution of write : %ld ns\n",
-	       (end.tv_sec - start.tv_sec) * 1000000000 +
-		       (end.tv_nsec - start.tv_nsec));
-
-	// Verify that the offset is up to date
-	off_t after = lseek(fd, 0, SEEK_CUR);
-	if (before != after - buf_len) {
-		dprintf(STDERR_FILENO, "Error : the offset was not updatted\n");
-		close(fd);
-		exit(EXIT_FAILURE);
-	}
-}
-
-void read_file(int fd)
-{
-	lseek(fd, 0, SEEK_SET);
-	struct timespec start = get_time();
-
-	char c = 0;
-	int i = -1;
-	// Check if the file is correct
-	while (read(fd, &c, 1) > 0) {
-		++i;
-		switch (c) {
-		case '\0':
-			if (i == 2048 || i == 4100 || i == 4099) {
-				dprintf(STDERR_FILENO, "Error: missplaced \\0 \n");
-				close(fd);
-			}
-			break;
-		case '1':
-			if (i != 4097) {
-				dprintf(STDERR_FILENO, "Error: missplaced 1\n");
-				close(fd);
-				exit(EXIT_FAILURE);
-			}
-			break;
-		case '2':
-			if (i != 2048) {
-				dprintf(STDERR_FILENO, "Error: missplaced 2\n");
-				close(fd);
-				exit(EXIT_FAILURE);
-			}
-			break;
-		case EOF:
-			if (i != 4098) {
-				dprintf(STDERR_FILENO, "Error: missplaced EOF\n");
-				close(fd);
-				exit(EXIT_FAILURE);
-			}
-			break;
-		default:
-			dprintf(STDERR_FILENO, "Error: unexpected character\n");
+	for (int n = 0; n < nb_iter; n++) {
+		char *buf = gen_string();
+		size_t buf_len = strlen(buf);
+		int w = write(fd, buf, buf_len);
+		// Verify the return value is correct
+		if (w != buf_len) {
+			dprintf(STDERR_FILENO,
+				"Error: sequential read return %d instead of %d\n",
+				w, (int)buf_len);
 			close(fd);
 			exit(EXIT_FAILURE);
 		}
 	}
-	struct timespec end = get_time();
 
-	printf("Time of read all file : %ld ns\n", (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec));
-	
-	char buf[15] = { 0 };
-	// lseek 5 bytes before EOF
-	off_t before = lseek(fd, -5, SEEK_END);
-	// read more than the end of file
-	int r = read(fd, buf, 15);
-	// check the return value
-	if (r != 5) {
-		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n",
-			r, 5);
-		return;
-	}
-	// check if offset is up to date
-	off_t after = lseek(fd, 0, SEEK_CUR);
-	if (before != after - r) {
-		dprintf(STDERR_FILENO, "Error : the offset was not updatted\n");
-		close(fd);
-		exit(EXIT_FAILURE);
-	}
-	// check if read return 0
-	r = read(fd, buf, 1);
-	if (r != 0) {
-		dprintf(STDERR_FILENO, "Error read result %d instead of %d\n", r , 0);
-		close(fd);
-		exit(EXIT_FAILURE);
-	}
+	struct timespec end = get_time();
+	time_t delta = ((end.tv_sec - start.tv_sec) * 1000) +
+		       (end.tv_nsec - start.tv_nsec) / 100000;
+
+	return delta;
 }
 
-int main()
+time_t random_writes(int fd, uint nb_iter)
+{
+	struct timespec start = get_time();
+
+	for (int n = 0; n < nb_iter; n++) {
+		char *buf = gen_string();
+		size_t buf_len = strlen(buf);
+		off_t rd_off = rand() % FILE_MAXOFFSET;
+		lseek(fd, rd_off, SEEK_SET);
+		int w = write(fd, buf, buf_len);
+
+		if (w != buf_len) {
+			dprintf(STDERR_FILENO,
+				"Error: random write return %d instead of %d\n",
+				w, (int)buf_len);
+			close(fd);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	struct timespec end = get_time();
+
+	time_t delta = ((end.tv_sec - start.tv_sec) * 1000) +
+		       ((end.tv_nsec - start.tv_nsec) / 100000);
+
+	return delta;
+}
+
+time_t sequential_reads(int fd, uint nb_iter)
+{
+	struct timespec start = get_time();
+	off_t rd_off = rand() % FILE_MAXOFFSET;
+	char *buf;
+	lseek(fd, rd_off, SEEK_SET);
+
+	for (int n = 0; n < nb_iter; n++) {
+		size_t rd_len = rand() % 300;
+		int r = read(fd, buf, rd_len);
+
+		if (r != rd_len) {
+			dprintf(STDERR_FILENO,
+				"Error: sequential read return %d instead of %d\n",
+				r, (int)rd_len);
+			close(fd);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	struct timespec end = get_time();
+
+	time_t delta = ((end.tv_sec - start.tv_sec) * 1000) +
+		       ((end.tv_nsec - start.tv_nsec) / 100000);
+	return delta;
+}
+
+time_t random_reads(int fd, uint nb_iter)
+{
+	char *buf;
+	struct timespec start = get_time();
+	for (int n = 0; n < nb_iter; n++) {
+		off_t rd_off = rand() % FILE_MAXOFFSET;
+		size_t rd_len = rand() % 300;
+		lseek(fd, rd_off, SEEK_SET);
+		int r = read(fd, buf, rd_len);
+
+		if (r != rd_len) {
+			dprintf(STDERR_FILENO,
+				"Error: random read return %d instead of %d\n",
+				r, (int)rd_len);
+			close(fd);
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	struct timespec end = get_time();
+
+	time_t delta = ((end.tv_sec - start.tv_sec) * 1000) +
+		       (end.tv_nsec - start.tv_nsec) / 100000;
+	return delta;
+}
+
+time_t complete_read(int fd)
+{
+	int r = 0;
+	char *buf;
+	struct timespec start = get_time();
+	lseek(fd, 0, SEEK_SET);
+	while ((r = read(fd, buf, BLK_SIZE * 2)) != 0) {
+	}
+
+	struct timespec end = get_time();
+
+	time_t delta = ((end.tv_sec - start.tv_sec) * 1000) +
+		       (end.tv_nsec - start.tv_nsec) / 100000;
+	return delta;
+}
+
+int main(int argc, char *argv[])
 {
 	int fd = open("file", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	if (fd < 0) {
@@ -132,11 +181,29 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
-	write_at(fd, "1", 1, 4097, SEEK_SET);
-	write_at(fd, "2", 1, 2048, SEEK_SET);
+	unsigned int seed = (int)strtol(argv[1], NULL, 10);
+	srand(seed);
+	uint nb_iter = rand() % 100;
 
-	read_file(fd);
+	time_t exec_time = sequential_writes(fd, nb_iter);
+	dprintf(STDOUT_FILENO,
+		"Execution time of %u sequential writes on the same file : %lu\n",
+		nb_iter, exec_time);
 
+	exec_time = random_writes(fd, nb_iter);
+	dprintf(STDOUT_FILENO,
+		"Execution time of %u random writes on the same file : %lu\n",
+		nb_iter, exec_time);
+
+	exec_time = sequential_reads(fd, nb_iter);
+	dprintf(STDOUT_FILENO,
+		"Execution time of %u sequential reads on the same file : %lu\n",
+		nb_iter, exec_time);
+
+	exec_time = random_reads(fd, nb_iter);
+	dprintf(STDOUT_FILENO,
+		"Execution time of %u random read on the same file : %lu\n",
+		nb_iter, exec_time);
 	close(fd);
 	return 0;
 }
