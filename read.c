@@ -1,6 +1,8 @@
+#define pr_fmt(fmt) "%s:%s: " fmt, KBUILD_MODNAME, __func__
+
 #include "read.h"
 
-ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
+ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 {
 	pr_debug("read_v1\n");
 
@@ -21,8 +23,8 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
 	// Init variable
 	size_t sz_read = 0;
 	size_t sz_left = size;
-	size_t first_blk = *off / sb->s_blocksize;
-	size_t bg_off = *off % sb->s_blocksize;
+	size_t first_blk = *pos / sb->s_blocksize;
+	size_t bg_off = *pos % sb->s_blocksize;
 
 	// i_blocks - 1 (index bloc)
 	for (int i = first_blk; i < inode->i_blocks - 1 && sz_left > 0; i++) {
@@ -60,7 +62,7 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *off)
 		brelse(bh);
 	}
 	// Offset update
-	*off += sz_read;
+	*pos += sz_read;
 	// Release block
 	brelse(index_block);
 	return sz_read;

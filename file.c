@@ -14,9 +14,10 @@
 #include <linux/mpage.h>
 
 #include "ouichefs.h"
-#include "read.h"
-#include "write.h"
 #include "bitmap.h"
+#include "write.h"
+#include "ioctl.h"
+#include "read.h"
 
 /*
  * Map the buffer_head passed in argument with the iblock-th block of the file
@@ -232,5 +233,6 @@ const struct file_operations ouichefs_file_ops = {
 	.open = ouichefs_open,
 	.llseek = generic_file_llseek,
 	.read_iter = generic_file_read_iter,
-	.write_iter = generic_file_write_iter
+	.write_iter = generic_file_write_iter,
+	.unlocked_ioctl = ouichefs_ioctl
 };
