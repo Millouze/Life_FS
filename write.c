@@ -134,7 +134,7 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 			return -EFAULT;
 		}
 		num_block |= BLK_FULL;
-		index->blocks[inode->i_blocks - 1] = num_block;
+		index->blocks[inode->i_blocks - 2] = num_block;
 		inode->i_blocks++;
 	}
 
@@ -169,7 +169,7 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 			brelse(index_block);
 			return -EFAULT;
 		}
-		index->blocks[inode->i_blocks - 1] = num_block;
+		index->blocks[inode->i_blocks - 2] = num_block;
 		inode->i_blocks++;
 	}
 
@@ -219,6 +219,7 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 	mark_inode_dirty(inode);
 	//inode->i_blocks+= nb_blk_a_alloue + nb_b_data + 1;
 	/** faire plus que ça */
+	// WARNING LEAKS
 	brelse(index_block);
 	pr_info("Value returned by fun %zu and inode->i_blocks value: %llu\n",
 		sz_write, inode->i_blocks);
@@ -254,7 +255,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	if (*pos > inode->i_size) {
 	}
 	//sinon
-	pr_info("Valeur de i_size %lld\n",inode->i_size);
+	pr_info("Valeur de i_size %lld\n", inode->i_size);
 	// Get the number of bloc to create
 	int nb_blk_a_alloue = 0;
 	nb_blk_a_alloue = sz / OUICHEFS_BLOCK_SIZE;
@@ -263,7 +264,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	nb_blk_a_alloue++;
 
 	if (inode->i_blocks + nb_blk_a_alloue > 1024) {
-		pr_err("Error trop de bloc");
+		pr_err("Error too many blocks for a single file\n");
 		return -ENOSPC;
 	}
 
@@ -275,7 +276,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	struct ouichefs_file_index_block *index;
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
-	size_t first_blk = -1;
+	ssize_t first_blk = -1;
 	size_t bg_off;
 	size_t taille_lue = 0;
 
@@ -349,7 +350,10 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 		return -EFAULT;
 	}
 
-	size_t split_num = split_sz == 4096 ?
+	// Si bloc split est plein car on shift toutes les données,
+	// On mets le flag plein et on positionne le numéro de bloc,
+	// Sinon on positionne flag non plein et on positionne la taille et le numéro de bloc
+	size_t split_num = (split_sz == 4096) ?
 				   ((BLK_FULL) | (num_blk & BLK_NUM)) :
 				   ((0 << 31) | ((split_sz << 19) & BLK_SIZE) |
 				    (num_blk & BLK_NUM));
@@ -359,7 +363,8 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 		index->blocks[i + nb_blk_a_alloue] = index->blocks[i];
 	}
 	index->blocks[first_blk + nb_blk_a_alloue] = split_num;
-	
+	inode->i_blocks++; // WARNING AJOUT PREMATURE
+
 	for (int i = 1; i < nb_blk_a_alloue; i++) {
 		uint32_t num_blk = get_free_block(sbi);
 		if (num_blk == 0) {
@@ -382,7 +387,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 			brelse(index_block);
 			brelse(bh);
 			brelse(split_bh);
-			// il faut faire plus de liberation que ça 
+			// il faut faire plus de liberation que ça
 			return -EIO;
 		}
 		size_t sz_to_write = min(bh->b_size, sz_left);

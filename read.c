@@ -41,9 +41,9 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		size_t sz_max = bh->b_size - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
 		if (i == inode->i_blocks - 2) {
-            sz_cpy = inode->i_size % 4096;
-            sz_cpy = ((inode->i_size / 4096) == 0) ? sz_cpy : 4096;
-      }
+			sz_cpy = inode->i_size % 4096;
+			sz_cpy = ((inode->i_size / 4096) == 0) ? sz_cpy : 4096;
+		}
 		if (sz_cpy == 0) {
 			pr_err("Error: nothing to read\n");
 			brelse(bh);
@@ -75,7 +75,6 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 #define BLK_FULL 0x80000000
 #define BLK_SIZE 0X7FF80000
 #define BLK_NUM 0X7FFF
-
 
 ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 {
@@ -122,11 +121,13 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	size_t bg_off = (*pos - taille_lue);
 
 	// i_blocks - 1 (index bloc)
-	for (int i = first_blk + 1; i < inode->i_blocks - 1 && sz_left > 0; i++) {
+	for (int i = first_blk + 1; i < inode->i_blocks - 1 && sz_left > 0;
+	     i++) {
 		// Get block to read
 		uint32_t num_blk = index->blocks[i];
 
-		struct buffer_head *bh = sb_bread(inode->i_sb, (num_blk & BLK_NUM));
+		struct buffer_head *bh =
+			sb_bread(inode->i_sb, (num_blk & BLK_NUM));
 		if (!bh) {
 			pr_err("Error sb_bread on block %d\n", num_blk);
 			brelse(index_block);
@@ -136,7 +137,8 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		// size max that we have to read in block
 		size_t sz_max = ((num_blk & BLK_SIZE) >> 19) - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
-		pr_info("%lu %lu %lu %u %u\n", sz_max, sz_left, bg_off, (num_blk & BLK_SIZE) >> 19, num_blk & BLK_NUM);
+		pr_info("%lu %lu %lu %u %u\n", sz_max, sz_left, bg_off,
+			(num_blk & BLK_SIZE) >> 19, num_blk & BLK_NUM);
 		if (sz_cpy == 0) {
 			pr_err("Error: nothing to read\n");
 			brelse(bh);
