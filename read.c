@@ -40,6 +40,10 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		// size max that we have to read in block
 		size_t sz_max = bh->b_size - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
+		if (i == inode->i_blocks - 2) {
+            sz_cpy = inode->i_size % 4096;
+            sz_cpy = ((inode->i_size / 4096) == 0) ? sz_cpy : 4096;
+      }
 		if (sz_cpy == 0) {
 			pr_err("Error: nothing to read\n");
 			brelse(bh);
