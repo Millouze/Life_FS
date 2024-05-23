@@ -14,6 +14,8 @@
 #include <linux/mpage.h>
 
 #include "ouichefs.h"
+#include "write.h"
+#include "read.h"
 #include "bitmap.h"
 
 /*

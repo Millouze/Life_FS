@@ -1,5 +1,5 @@
 obj-m += ouichefs.o
-ouichefs-objs := fs.o super.o inode.o file.o dir.o
+ouichefs-objs := fs.o super.o inode.o file.o dir.o read.o write.o
 
 KERNELDIR ?= $(PWD)/../linux-6.5.7/
 PWD ?= $(shell pwd)

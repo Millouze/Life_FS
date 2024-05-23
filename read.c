@@ -46,10 +46,13 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 			brelse(index_block);
 			return -EFAULT;
 		}
-		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
+		int ret_cp = 0;
+		if ((ret_cp = copy_to_user(buf + sz_read, bh->b_data + bg_off,
+					   sz_cpy))) {
 			pr_err("Error: copy_to_user failed in read v1\n");
 			brelse(bh);
 			brelse(index_block);
+			pr_info("Return value of cp_to_user : %d\n", ret_cp);
 			return -EFAULT;
 		}
 

@@ -48,7 +48,7 @@ struct timespec get_time()
 /**
  * Write buf in fd at whence
  */
-time_t sequential_writes(int fd, uint nb_iter)
+time_t sequential_writes(int fd, uint nb_iter, char *buf)
 {
 	off_t random_off = rand() % FILE_MAXOFFSET;
 	lseek(fd, random_off, SEEK_SET);
@@ -56,7 +56,6 @@ time_t sequential_writes(int fd, uint nb_iter)
 	struct timespec start = get_time();
 
 	for (int n = 0; n < nb_iter; n++) {
-		char *buf = gen_string();
 		size_t buf_len = strlen(buf);
 		int w = write(fd, buf, buf_len);
 		// Verify the return value is correct
@@ -76,12 +75,11 @@ time_t sequential_writes(int fd, uint nb_iter)
 	return delta;
 }
 
-time_t random_writes(int fd, uint nb_iter)
+time_t random_writes(int fd, uint nb_iter, char *buf)
 {
 	struct timespec start = get_time();
 
 	for (int n = 0; n < nb_iter; n++) {
-		char *buf = gen_string();
 		size_t buf_len = strlen(buf);
 		off_t rd_off = rand() % FILE_MAXOFFSET;
 		lseek(fd, rd_off, SEEK_SET);
@@ -104,15 +102,15 @@ time_t random_writes(int fd, uint nb_iter)
 	return delta;
 }
 
-time_t sequential_reads(int fd, uint nb_iter)
+time_t sequential_reads(int fd, uint nb_iter, size_t rd_len)
 {
-	struct timespec start = get_time();
-	off_t rd_off = rand() % FILE_MAXOFFSET;
-	char *buf;
+	off_t rd_off = 0;
+	char buf[rd_len];
+	memset(buf, 0, rd_len);
 	lseek(fd, rd_off, SEEK_SET);
 
+	struct timespec start = get_time();
 	for (int n = 0; n < nb_iter; n++) {
-		size_t rd_len = rand() % 300;
 		int r = read(fd, buf, rd_len);
 
 		if (r != rd_len) {
@@ -131,13 +129,14 @@ time_t sequential_reads(int fd, uint nb_iter)
 	return delta;
 }
 
-time_t random_reads(int fd, uint nb_iter)
+time_t random_reads(int fd, uint nb_iter, size_t rd_len)
 {
-	char *buf;
+	char buf[rd_len];
+	memset(buf, 0, rd_len);
+	size_t fsz = lseek(fd, 0, SEEK_END);
 	struct timespec start = get_time();
 	for (int n = 0; n < nb_iter; n++) {
-		off_t rd_off = rand() % FILE_MAXOFFSET;
-		size_t rd_len = rand() % 300;
+		off_t rd_off = rand() % fsz;
 		lseek(fd, rd_off, SEEK_SET);
 		int r = read(fd, buf, rd_len);
 
@@ -160,7 +159,8 @@ time_t random_reads(int fd, uint nb_iter)
 time_t complete_read(int fd)
 {
 	int r = 0;
-	char *buf;
+	char buf[BLK_SIZE * 2];
+	memset(buf, 0, BLK_SIZE * 2);
 	struct timespec start = get_time();
 	lseek(fd, 0, SEEK_SET);
 	while ((r = read(fd, buf, BLK_SIZE * 2)) != 0) {
@@ -184,26 +184,33 @@ int main(int argc, char *argv[])
 	unsigned int seed = (int)strtol(argv[1], NULL, 10);
 	srand(seed);
 	uint nb_iter = rand() % 100;
+	size_t rd_len = rand() % 500;
+	char *buf = gen_string();
 
-	time_t exec_time = sequential_writes(fd, nb_iter);
+	time_t exec_time = sequential_writes(fd, nb_iter, buf);
 	dprintf(STDOUT_FILENO,
 		"Execution time of %u sequential writes on the same file : %lu\n",
 		nb_iter, exec_time);
 
-	exec_time = random_writes(fd, nb_iter);
+	exec_time = random_writes(fd, nb_iter, buf);
 	dprintf(STDOUT_FILENO,
 		"Execution time of %u random writes on the same file : %lu\n",
 		nb_iter, exec_time);
 
-	exec_time = sequential_reads(fd, nb_iter);
+	exec_time = sequential_reads(fd, nb_iter, rd_len);
 	dprintf(STDOUT_FILENO,
 		"Execution time of %u sequential reads on the same file : %lu\n",
 		nb_iter, exec_time);
 
-	exec_time = random_reads(fd, nb_iter);
+	exec_time = random_reads(fd, nb_iter, rd_len);
 	dprintf(STDOUT_FILENO,
 		"Execution time of %u random read on the same file : %lu\n",
 		nb_iter, exec_time);
+
+	exec_time = complete_read(fd);
+	dprintf(STDOUT_FILENO,
+		"Execution time of a complete read of a file : %lu\n",
+		exec_time);
 	close(fd);
 	return 0;
 }

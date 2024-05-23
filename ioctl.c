@@ -6,7 +6,6 @@
 
 int file_info(struct file *file, char *buf)
 {
-	pr_info("In file info function");
 	struct inode *inode = file->f_inode;
 	struct super_block *sb = inode->i_sb;
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
@@ -20,7 +19,7 @@ int file_info(struct file *file, char *buf)
 	struct ouichefs_file_index_block *index;
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
-	pr_info("number od used block %llu\n", inode->i_blocks);
+	pr_info("Number of used block : %llu\n", inode->i_blocks);
 	size_t blk_bytes_wasted = 0;
 	size_t bytes_wasted = 0;
 	size_t sz;
@@ -33,7 +32,7 @@ int file_info(struct file *file, char *buf)
 			sz = (blk_info & BLK_SIZE) >> 19;
 			blk_bytes_wasted = OUICHEFS_BLOCK_SIZE - sz;
 			bytes_wasted += blk_bytes_wasted;
-			pr_info("Block %zu is partially filled \tsize :%zu wastes %zu\n",
+			pr_info("Block %zu is partially filled \t size :%zu wasted %zu\n",
 				num_blk, sz, blk_bytes_wasted);
 		} else {
 			pr_info("Block %zu is full\n", num_blk);
@@ -47,7 +46,7 @@ int file_info(struct file *file, char *buf)
 
 long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	pr_info("ouichefs IOCTL");
+	pr_info("OUICHEFS IOCTL | CMD NUMBER : ");
 
 	pr_info("%c\n", _IOC_TYPE(cmd));
 	if (_IOC_TYPE(cmd) != OUICH_MAGIC_IOCTL) {
@@ -61,7 +60,7 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		break;
 
 	default:
-		pr_err("Unsupported IOCTL");
+		pr_err("Unsupported IOCTL\n");
 		return -EINVAL;
 	}
 	return 0;
