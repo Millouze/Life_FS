@@ -254,7 +254,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	if (*pos > inode->i_size) {
 	}
 	//sinon
- pr_info("Valeur de i_size %lld\n",inode->i_size);
+	pr_info("Valeur de i_size %lld\n",inode->i_size);
 	// Get the number of bloc to create
 	int nb_blk_a_alloue = 0;
 	nb_blk_a_alloue = sz / OUICHEFS_BLOCK_SIZE;
@@ -386,6 +386,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 			return -EIO;
 		}
 		size_t sz_to_write = min(bh->b_size, sz_left);
+		pr_info("Reading block %u\n", num_blk & BLK_NUM);
 		if (copy_from_user(bh->b_data, buf + sz_write, sz_to_write) !=
 		    0) {
 			pr_err("Error: copy_from_user failed in write v2\n");
