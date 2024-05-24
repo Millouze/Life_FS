@@ -125,11 +125,13 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 	if ((sz % OUICHEFS_BLOCK_SIZE) != 0)
 		nb_blk_a_alloue++;
 
+	pr_info("In fun: nb_blk_a_alloue = %d\n", nb_blk_a_alloue);
+
 	//allocation des blocs de padding
 	for (int i = 0; i < nb_blk_a_alloue - 1; i++) {
 		int num_block = get_free_block(sbi);
 		if (num_block == 0) {
-			pr_err("Error in get_free_block");
+			pr_err("Error in get_free_block\n");
 			brelse(index_block);
 			return -EFAULT;
 		}
@@ -141,15 +143,28 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 	//Allocation du dernier bloc de padding qui peut aussi avoir de la data
 	int num_block = get_free_block(sbi);
 	if (num_block == 0) {
-		pr_err("Error in get_free_block");
+		pr_err("Error in get_free_block\n");
 		brelse(index_block);
 		return -EFAULT;
 	}
-	int taille_blk = ((*pos - 1) % 4096);
-	num_block |= (taille_blk == 0) ? BLK_FULL : (((*pos - 1) % 4096) << 19);
-	int first_blk = inode->i_blocks;
-	index->blocks[inode->i_blocks++] = num_block;
 
+	pr_info("In fun: num_block =%d\n", num_block);
+
+	int taille_blk;
+	if (*pos == 0) {
+		taille_blk = sz % 4096;
+		num_block |= (taille_blk << 19);
+	} else {
+		taille_blk = ((*pos - 1) % 4096);
+		num_block |= (taille_blk == 0) ? BLK_FULL :
+						 (((*pos - 1) % 4096) << 19);
+	}
+	int first_blk = inode->i_blocks - 1;
+	index->blocks[inode->i_blocks - 1] = num_block;
+	inode->i_blocks++;
+
+	pr_info("In fun: num_block =%d after the shenanigans first_blk=%d\n",
+		num_block & BLK_NUM, first_blk);
 	//determiner si le permier bloc de data est aussi le dernier bloc de padding
 	if (taille_blk == 0) {
 		first_blk++;
@@ -161,11 +176,13 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 		nb_b_data++;
 	}
 
+	pr_info("In fun: nb_b_data = %d\n", nb_b_data);
+
 	//allocation des blocs de data
 	for (int i = 0; i < nb_b_data - 1; i++) {
 		num_block = get_free_block(sbi);
 		if (num_block == 0) {
-			pr_err("Error in get_free_block");
+			pr_err("Error in get_free_block\n");
 			brelse(index_block);
 			return -EFAULT;
 		}
@@ -178,7 +195,8 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 	size_t sz_write = 0;
 	size_t sz_left = sz;
 
-	pr_info("first_blk %d et i_blocks %llu\n", first_blk, inode->i_blocks);
+	pr_info("first_blk %d is block number %u et i_blocks %llu\n", first_blk,
+		index->blocks[first_blk] & BLK_NUM, inode->i_blocks);
 
 	for (int i = first_blk; i < inode->i_blocks && sz_left > 0; i++) {
 		uint32_t num_blk = index->blocks[i];
@@ -194,7 +212,7 @@ static ssize_t fun(struct file *file, const char __user *buf, size_t sz,
 		size_t sz_to_write = min(bh->b_size - bg_off, sz_left);
 		if (copy_from_user(bh->b_data + bg_off, buf + sz_write,
 				   sz_to_write) != 0) {
-			pr_err("Error: copy_from_user failed in write v1\n");
+			pr_err("Error: copy_from_user failed in write v2 fun\n");
 			brelse(bh);
 			brelse(index_block);
 			return -EFAULT;
@@ -263,7 +281,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 		nb_blk_a_alloue++;
 	nb_blk_a_alloue++;
 
-	if (inode->i_blocks + nb_blk_a_alloue > 1024) {
+	if (inode->i_blocks + nb_blk_a_alloue > 1025) {
 		pr_err("Error too many blocks for a single file\n");
 		return -ENOSPC;
 	}
@@ -298,7 +316,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	}
 
 	pr_info("inode->i_blocks: %llu first_blk: %zu nb_blk_alloue: %d\n",
-		inode->i_blocks, first_blk, nb_blk_a_alloue);
+		inode->i_blocks, first_blk & BLK_NUM, nb_blk_a_alloue);
 	if (first_blk == -1) {
 		brelse(index_block);
 		//replace with real function call
@@ -308,9 +326,9 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 	bg_off = *pos - taille_lue;
 
 	struct buffer_head *bh =
-		sb_bread(inode->i_sb, index->blocks[first_blk]);
+		sb_bread(inode->i_sb, index->blocks[first_blk] & BLK_NUM);
 	if (!bh) {
-		pr_err("Error sb_bread on block %d\n",
+		pr_err("Error sb_bread in a data block %d\n",
 		       index->blocks[first_blk]);
 		brelse(index_block);
 		return -EIO;
@@ -320,7 +338,13 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 		((index->blocks[first_blk] & BLK_FULL) ?
 			 4096 :
 			 ((index->blocks[first_blk] & BLK_SIZE) >> 19));
-	size_t split_sz = first_blk_sz - *pos;
+	pr_info("First_blk_size calculated : %zu \n", first_blk_sz);
+
+	ssize_t split_sz = 0;
+	if (first_blk_sz == 0) {
+		split_sz = first_blk_sz - *pos;
+	}
+	pr_info("split_sz calculated : %zd \n", split_sz);
 	first_blk_sz -= split_sz;
 
 	//mise a jour de la taille effective du bloc coupe
@@ -329,6 +353,11 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 
 	//indication que le bloc n'est plus plein
 	index->blocks[first_blk] &= (~BLK_FULL);
+
+	pr_info("Après split calcul du num du block coupé:\n FULL : %d, SIZE: %d, NUM: %d\n",
+		(index->blocks[first_blk] & BLK_FULL) >> 31,
+		(index->blocks[first_blk] & BLK_SIZE) >> 19,
+		index->blocks[first_blk] & BLK_NUM);
 
 	// alloue le premier bloc pour le spit
 	uint32_t num_blk = get_free_block(sbi);
@@ -339,7 +368,17 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 		return -EFAULT;
 	}
 
-	struct buffer_head *split_bh = sb_bread(inode->i_sb, num_blk & BLK_NUM);
+	struct buffer_head *split_bh = sb_bread(sb, num_blk & BLK_NUM);
+	if (!split_bh) {
+		pr_err("Error sb_bread in the split block %d\n",
+		       num_blk & BLK_NUM);
+		brelse(index_block);
+		brelse(bh);
+		return -EIO;
+	}
+
+	pr_info("Split block ok bg_off= %zu, split_sz = %lu, *pos= %llu\n",
+		bg_off, split_sz, *pos);
 
 	if (!memcpy(split_bh->b_data, bh->b_data + bg_off, split_sz)) {
 		//Problèmes
@@ -391,7 +430,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 			return -EIO;
 		}
 		size_t sz_to_write = min(bh->b_size, sz_left);
-		pr_info("Reading block %u\n", num_blk & BLK_NUM);
+		pr_info("Reading block data block %u\n", num_blk & BLK_NUM);
 		if (copy_from_user(bh->b_data, buf + sz_write, sz_to_write) !=
 		    0) {
 			pr_err("Error: copy_from_user failed in write v2\n");
