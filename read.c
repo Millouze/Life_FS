@@ -118,6 +118,7 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	for (int i = bg_off; i < inode->i_blocks - 1 && sz_left > 0; i++) {
 		// Get block to read
 		uint32_t num_blk = index->blocks[i];
+		pr_info("num_blk : %d", GET_BLK_NUM(num_blk));
 		struct buffer_head *bh = sb_bread(sb, GET_BLK_NUM(num_blk));
 		if (!bh) {
 			pr_err("Error: sb_bread on block %d\n", num_blk);
@@ -129,6 +130,8 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		size_t sz_cpy = min(sz_left, sz_max);
 		if (sz_cpy == 0)
 			continue;
+		pr_info("b_data %s\n", bh->b_data);
+		pr_info("b_data + off %s\n", bh->b_data + bg_off);
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v2\n");
 			brelse(bh);

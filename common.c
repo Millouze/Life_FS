@@ -11,10 +11,13 @@ void get_first_blk(size_t nb_blk, uint32_t *blocks, loff_t pos, size_t *bg_blk,
 		else
 			blk_size_read = GET_BLK_SIZE(num_blk);
 
-		if ((*sz_read) < pos)
+		if ((*sz_read) < pos) {
 			*sz_read += blk_size_read;
-		else
+		}
+		else {
 			*bg_blk = i;
+			return;
+		}
 	}
 	*bg_blk = -1;
 }
