@@ -114,11 +114,12 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	size_t bg_off = (*pos - sz_read);
 	sz_read = 0;
 
+	pr_info("i_size %lld pos %lld i_blocks %lld\n", inode->i_size, *pos, inode->i_blocks);
 	// loop until i_blocks - 1 bc index_bloc count but is not in the array
 	for (int i = bg_off; i < inode->i_blocks - 1 && sz_left > 0; i++) {
 		// Get block to read
 		uint32_t num_blk = index->blocks[i];
-		pr_info("num_blk : %d", GET_BLK_NUM(num_blk));
+		pr_info("++num_blk : %d", GET_BLK_NUM(num_blk));
 		struct buffer_head *bh = sb_bread(sb, GET_BLK_NUM(num_blk));
 		if (!bh) {
 			pr_err("Error: sb_bread on block %d\n", num_blk);
@@ -128,8 +129,10 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 
 		size_t sz_max = GET_SIZE(num_blk) - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
-		if (sz_cpy == 0)
+		if (sz_cpy == 0) {
+			pr_info("je continue\n");
 			continue;
+		}
 		pr_info("b_data %s\n", bh->b_data);
 		pr_info("b_data + off %s\n", bh->b_data + bg_off);
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
