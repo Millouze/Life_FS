@@ -1,8 +1,8 @@
 #include "ioctl.h"
 #include "linux/buffer_head.h"
 #include "linux/fs.h"
+#include "linux/kasan.h"
 #include "linux/sched/signal.h"
-#include <string.h>
 
 #define BLK_FULL 0x80000000
 #define BLK_SIZE 0X7FF80000
@@ -77,11 +77,11 @@ int checkfrag(struct file *file)
 	int blk_full;
 	struct buffer_head *bh;
 
-	for (int i = 0; i <= inode->i_blocks-2; i++) {
+	for (int i = 0; i <= inode->i_blocks - 2; i++) {
 		blk_num = index->blocks[i] & BLK_NUM;
-		blk_sz = (index->blocks[i] & BLK_SIZE)>>19;
+		blk_sz = (index->blocks[i] & BLK_SIZE) >> 19;
 		blk_full = index->blocks[i] & BLK_FULL;
-		bh = sb_bread(sb,blk_num);
+		bh = sb_bread(sb, blk_num);
 		if (bh == NULL) {
 			pr_err("Error: sb_bread for index_block in defrag IOCTL\n");
 			brelse(index_block);
@@ -89,30 +89,28 @@ int checkfrag(struct file *file)
 		}
 
 		//bloc qui n'est pas le dernier n'est pas plein ?
-		if((i != inode->i_blocks-2) && (!blk_full && blk_sz>0)){
-			frag=1;
+		if ((i != inode->i_blocks - 2) && (!blk_full && blk_sz > 0)) {
+			frag = 1;
 		}
 
 		//verification que le bloc n'est pas plein et que sa taille est 0
-		if( (!blk_full) && (blk_sz == 0) ){
+		if ((!blk_full) && (blk_sz == 0)) {
 			//bloc vide on le vire
-			put_block(sbi,blk_num);
+			put_block(sbi, blk_num);
 			inode->i_blocks--;
-			for(int j = i; j< inode->i_blocks-2; j++){
-				index->blocks[j] = index->blocks[j+1];
+			for (int j = i; j < inode->i_blocks - 2; j++) {
+				index->blocks[j] = index->blocks[j + 1];
 			}
-			i--;	
+			i--;
 		}
-		
+
 		brelse(bh);
-		
 	}
 	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 	brelse(index_block);
 	return frag;
 }
-
 
 /**
 *Checks for fragmentation and resolves it if there is some
@@ -133,13 +131,12 @@ int ouich_defrag(struct file *file)
 	struct ouichefs_file_index_block *index;
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
-
 	int checkret = checkfrag(file);
-	if(!checkret){
+	if (!checkret) {
 		pr_info("File has no fragmentation exiting IOCTL");
 		return 0;
 	}
-	
+
 	// Beyond this point there is fragmentation to be unmade
 
 	int blk_numA;
@@ -153,59 +150,65 @@ int ouich_defrag(struct file *file)
 	struct buffer_head *bhB;
 
 	int ponction;
-	
-	char buf[4096];
-	
-	while(checkret){
-		for(int i =0; i <= inode->i_blocks - 2; i++){
-					
+
+	char *buf = (char *) kmalloc(sizeof(char)*4096,GFP_KERNEL);
+
+	while (checkret) {
+		for (int i = 0; i <= inode->i_blocks - 2; i++) {
 			blk_numA = index->blocks[i] & BLK_NUM;
-			blk_szA = (index->blocks[i] & BLK_SIZE)>>19;
+			blk_szA = (index->blocks[i] & BLK_SIZE) >> 19;
 			blk_fullA = index->blocks[i] & BLK_FULL;
-			bhA = sb_bread(sb,blk_numA);
+			bhA = sb_bread(sb, blk_numA);
 			if (bhA == NULL) {
 				pr_err("Error: sb_bread bhA in defrag IOCTL\n");
+				kfree(buf);
 				brelse(index_block);
 				return -EIO;
 			}
-			
-			for(int j = i+1; (j<= inode->i_blocks-2) && (!blk_fullA);i++){
-			
+
+			for (int j = i + 1;
+			     (j <= inode->i_blocks - 2) && (!blk_fullA); i++) {
 				blk_numB = index->blocks[j] & BLK_NUM;
-				blk_szB = (index->blocks[j] & BLK_SIZE)>>19;
+				blk_szB = (index->blocks[j] & BLK_SIZE) >> 19;
 				blk_fullB = index->blocks[j] & BLK_FULL;
-				bhB = sb_bread(sb,blk_numB);
+				bhB = sb_bread(sb, blk_numB);
 				if (bhB == NULL) {
 					pr_err("Error: sb_bread bhB in defrag IOCTL\n");
+					kfree(buf);
 					brelse(index_block);
 					return -EIO;
 				}
-				ponction = min(4096- blk_szA, blk_szB);
-				memcpy(bhA->b_data + blk_szA, bhB->b_data, ponction);
+				ponction = min(4096 - blk_szA, blk_szB);
+				memcpy(bhA->b_data + blk_szA, bhB->b_data,
+				       ponction);
 				blk_szA += ponction;
-				if(blk_szA == 4096){
+				if (blk_szA == 4096) {
 					blk_fullA = BLK_FULL;
 				}
-				index->blocks[i] = blk_fullA | ((blk_szA<<19)& BLK_SIZE)|blk_numA;
-				if(ponction == blk_szB){
+				index->blocks[i] =
+					blk_fullA |
+					((blk_szA << 19) & BLK_SIZE) | blk_numA;
+				if (ponction == blk_szB) {
 					//On a vidé le bloc B
-					blk_szB= 0;
+					blk_szB = 0;
 					index->blocks[j] = blk_numB;
-				}else{
+				} else {
 					//On doit déplacer le contenu du bloc B
-					memcpy(buf,bhB->b_data + ponction, blk_szB - ponction );
-					memcpy(bhB->b_data, buf,blk_szB - ponction );
+					memcpy(buf, bhB->b_data + ponction,
+					       blk_szB - ponction);
+					memcpy(bhB->b_data, buf,
+					       blk_szB - ponction);
 					blk_szB -= ponction;
-					index->blocks[j] = ((blk_szB<<19)& BLK_SIZE)|blk_numB;
+					index->blocks[j] =
+						((blk_szB << 19) & BLK_SIZE) |
+						blk_numB;
 				}
 				brelse(bhB);
 			}
-			
-			
-			
 		}
 		checkret = checkfrag(file);
 	}
+	kfree(buf);
 	return 1;
 }
 
