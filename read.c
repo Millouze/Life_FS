@@ -4,7 +4,7 @@
 
 ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 {
-	pr_debug("read_v1\n");
+	pr_info("read_v1\n");
 
 	// Get struct
 	struct inode *inode = file->f_inode;
@@ -116,12 +116,14 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		}
 	}
 	if (first_blk == -1) {
-		/** Gestion d'erreur */
+		brelse(index_block);
+		return 0;
 	}
 	size_t bg_off = (*pos - taille_lue);
 
 	// i_blocks - 1 (index bloc)
-	for (int i = first_blk + 1; i < inode->i_blocks - 1 && sz_left > 0;
+	pr_info("first_blk %zd, i_blocks %llu\n", first_blk, inode->i_blocks);
+	for (int i = first_blk; i < inode->i_blocks - 1 && sz_left > 0;
 	     i++) {
 		// Get block to read
 		uint32_t num_blk = index->blocks[i];
@@ -139,12 +141,9 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 		size_t sz_cpy = min(sz_left, sz_max);
 		pr_info("%lu %lu %lu %u %u\n", sz_max, sz_left, bg_off,
 			(num_blk & BLK_SIZE) >> 19, num_blk & BLK_NUM);
-		if (sz_cpy == 0) {
-			pr_err("Error: nothing to read\n");
-			brelse(bh);
-			brelse(index_block);
-			return -EFAULT;
-		}
+		if (sz_cpy == 0)
+			continue;
+		pr_info("b_data : %s\n", bh->b_data + bg_off);
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v1\n");
 			brelse(bh);

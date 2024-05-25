@@ -440,6 +440,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t sz,
 			brelse(index_block);
 			return -EFAULT;
 		}
+		pr_info("bh_bdata %s\n", bh->b_data);
 		sz_left -= sz_to_write;
 		sz_write += sz_to_write;
 
