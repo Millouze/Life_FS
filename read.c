@@ -1,20 +1,21 @@
 #include "read.h"
 
 #include <linux/buffer_head.h>
-#include "ouichefs.h"
+
 #include "common.h"
+#include "ouichefs.h"
 
 ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 {
-	pr_info("read_v1\n");
+	pr_debug("read_v1\n");
 
 	// Get structs
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
 
-	// If read after EOF
-	if (inode->i_size < *pos)
+	// If read after EOF or nothing to read
+	if (inode->i_size < *pos || size == 0)
 		return 0;
 
 	// Get index bloc
@@ -87,8 +88,8 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
 
-	// If read after EOF
-	if (inode->i_size < *pos)
+	// If read after EOF or nothing to read
+	if (inode->i_size < *pos || size == 0)
 		return 0;
 
 	// Get index bloc

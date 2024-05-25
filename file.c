@@ -15,6 +15,9 @@
 
 #include "ouichefs.h"
 #include "bitmap.h"
+#include "ioctl.h"
+#include "write.h"
+#include "read.h"
 
 /*
  * Map the buffer_head passed in argument with the iblock-th block of the file
@@ -225,6 +228,9 @@ static int ouichefs_open(struct inode *inode, struct file *file) {
 const struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
+	.read = read_v2,
+	.write = write_v2,
+	.unlocked_ioctl = ouichefs_ioctl,
 	.llseek = generic_file_llseek,
 	.read_iter = generic_file_read_iter,
 	.write_iter = generic_file_write_iter

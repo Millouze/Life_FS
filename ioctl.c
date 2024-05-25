@@ -1,9 +1,10 @@
 #include "ioctl.h"
 
+#include <linux/buffer_head.h>
+
 #include "common.h"
 #include "ouichefs.h"
 #include "linux/ioctl.h"
-#include <linux/buffer_head.h>
 
 #define OUICH_MAGIC_IOCTL 'N'
 #define OUICH_FILE_INFO _IOR(OUICH_MAGIC_IOCTL, 1, char *)
