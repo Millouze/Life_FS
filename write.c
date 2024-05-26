@@ -157,6 +157,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	size_t sz_read = 0;
 	size_t bg_off = 0;
 	ssize_t first_blk = -1;
+	size_t sz_write_padding = 0;
 	struct buffer_head *bh;
 	struct buffer_head *split_bh;
 	// Get the number of bloc to create
@@ -164,10 +165,10 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	if (*pos > inode->i_size) {
 		size_t nb_blk_alloc = 0;
 		// Get the number of bloc to create
-		size_t sz_write = *pos - inode->i_size;
+		sz_write_padding = *pos - inode->i_size;
 
-		nb_blk_alloc = sz_write / OUICHEFS_BLOCK_SIZE;
-		if ((sz_write % OUICHEFS_BLOCK_SIZE) != 0)
+		nb_blk_alloc = sz_write_padding / OUICHEFS_BLOCK_SIZE;
+		if ((sz_write_padding % OUICHEFS_BLOCK_SIZE) != 0)
 			nb_blk_alloc++;
 
 		if (nb_blk_alloc > sbi->nr_free_blocks) {
@@ -339,7 +340,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 		brelse(bh);
 	}
 	// update inode
-	inode->i_size += sz_write;
+	inode->i_size += sz_write + sz_write_padding;
 
 	// update offset
 	*pos += sz_write;
