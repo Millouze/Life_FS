@@ -29,6 +29,7 @@ static int checkfrag(struct file *file)
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
 
 	int frag = 0;
+	int blk_sup = 0;
 	int blk_num;
 	int blk_sz;
 	int blk_full;
@@ -38,6 +39,7 @@ static int checkfrag(struct file *file)
 		blk_num = GET_BLK_NUM(index->blocks[i]);
 		blk_sz = GET_BLK_SIZE(index->blocks[i]);
 		blk_full = GET_BLK_FULL(index->blocks[i]);
+
 		bh = sb_bread(sb, blk_num);
 		if (bh == NULL) {
 			pr_err("Error: sb_bread for index_block in defrag IOCTL\n");
@@ -56,13 +58,16 @@ static int checkfrag(struct file *file)
 			for (int j = i; j < inode->i_blocks - 2; j++)
 				index->blocks[j] = index->blocks[j + 1];
 			i--;
+			blk_sup = 1;
 		}
 		brelse(bh);
 	}
-	mark_buffer_dirty(index_block);
-	sync_dirty_buffer(index_block);
+	if (blk_sup) {
+		mark_buffer_dirty(index_block);
+		sync_dirty_buffer(index_block);
+		inode->i_mtime = inode->i_ctime = current_time(inode);
+	}
 	brelse(index_block);
-	inode->i_mtime = inode->i_ctime = current_time(inode);
 	mark_inode_dirty(inode);
 	return frag;
 }
@@ -72,6 +77,11 @@ static int checkfrag(struct file *file)
  */
 int ouich_defrag(struct file *file)
 {
+	int checkret = checkfrag(file);
+
+	if (!checkret)
+		return 0;
+
 	// Get structs
 	struct inode *inode = file->f_inode;
 	struct super_block *sb = inode->i_sb;
@@ -86,13 +96,6 @@ int ouich_defrag(struct file *file)
 		return -EIO;
 	}
 	index = (struct ouichefs_file_index_block *)index_block->b_data;
-
-	int checkret = checkfrag(file);
-
-	if (!checkret) {
-		pr_info("File has no fragmentation exiting IOCTL");
-		return 0;
-	}
 
 	// Beyond this point there is fragmentation to be unmade
 	int blk_numA;
@@ -114,6 +117,7 @@ int ouich_defrag(struct file *file)
 			blk_numA = GET_BLK_NUM(index->blocks[i]);
 			blk_szA = GET_BLK_SIZE(index->blocks[i]);
 			blk_fullA = GET_BLK_FULL(index->blocks[i]);
+
 			bhA = sb_bread(sb, blk_numA);
 			if (bhA == NULL) {
 				pr_err("Error: sb_bread bhA in defrag IOCTL\n");
@@ -123,7 +127,7 @@ int ouich_defrag(struct file *file)
 			}
 
 			for (int j = i + 1;
-			     (j <= inode->i_blocks - 2) && (!blk_fullA); i++) {
+			(j <= (inode->i_blocks - 2)) && (!blk_fullA); j++) {
 				blk_numB = GET_BLK_NUM(index->blocks[j]);
 				blk_szB = GET_BLK_SIZE(index->blocks[j]);
 				blk_fullB = (GET_BLK_FULL(index->blocks[j]));
@@ -136,7 +140,7 @@ int ouich_defrag(struct file *file)
 				}
 				ponction = min(4096 - blk_szA, blk_szB);
 				memcpy(bhA->b_data + blk_szA, bhB->b_data,
-				       ponction);
+				ponction);
 				blk_szA += ponction;
 				if (blk_szA == 4096)
 					blk_fullA = BLK_FULL;
@@ -150,9 +154,9 @@ int ouich_defrag(struct file *file)
 				} else {
 					//On doit déplacer le contenu du bloc B
 					memcpy(buf, bhB->b_data + ponction,
-					       blk_szB - ponction);
-					memcpy(bhB->b_data, buf,
-					       blk_szB - ponction);
+					blk_szB - ponction);
+					memcpy(bhB->b_data, buf, blk_szB -
+					ponction);
 					blk_szB -= ponction;
 					index->blocks[j] =
 						((blk_szB << 19) & BLK_SIZE) |
@@ -160,6 +164,7 @@ int ouich_defrag(struct file *file)
 				}
 				brelse(bhB);
 			}
+			brelse(bhA);
 		}
 		checkret = checkfrag(file);
 	}
