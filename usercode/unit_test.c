@@ -140,16 +140,57 @@ int spaced_wr(int fd, off_t off_st, off_t off_end, char *rd_str, size_t str_sz)
 	return EXIT_SUCCESS;
 }
 
+//Test des écritures au milieu d'un fichier
+int middle_insertion(int fd, char *str, size_t sz, off_t off)
+{
+	char *buf = (char *)calloc(sz,sizeof(char) );
+	lseek(fd, off, SEEK_SET);
+
+	if (write(fd, str, sz) <= 0) {
+		dprintf(STDOUT_FILENO, "Write Error : end_insertion \n");
+		return EXIT_FAILURE;
+	}
+	lseek(fd, off, SEEK_SET);
+	int a = read(fd, buf, sz);
+	int b = strncmp(str, buf, sz);
+	printf("a = %d \n%s, %s\n",a, str, buf);
+
+	if (a != sz || b != 0) {
+		printf("MIDDLE INSERTION : ");
+		printf(RED);
+		printf("FAILED \n");
+		printf(COLOR_DEFAULT);
+		free(buf);
+		return EXIT_FAILURE;
+	}
+
+	printf("MIDDLE INSERTION : ");
+	printf(GREEN);
+	printf("SUCCESS \n");
+	printf(COLOR_DEFAULT);
+	free(buf);
+
+	return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[])
 {
 	int fd = open("test1", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	int fd2 = open("test2", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	int fd3 = open("test3", O_CREAT | O_RDWR | O_TRUNC, 0664);
+	int fd4 = open("test4", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	srand(time(NULL));
 	char *rd_str = gen_string(10);
 	start_insertion(fd, rd_str, 10);
 	end_insertion(fd2, rd_str, 10);
 	spaced_wr(fd3, BLK_SIZE * 2, BLK_SIZE * 1000, rd_str, 10);
+	free(rd_str);
+
+	rd_str = gen_string(50);
+	write(fd4, rd_str, strlen(rd_str));
+	free(rd_str);
+	rd_str = gen_string(10);
+	middle_insertion(fd4, "aaaa", 4, 20);
 	free(rd_str);
 
 	return 0;
