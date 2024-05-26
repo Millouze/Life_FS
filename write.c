@@ -150,7 +150,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	// Get index bloc
 	index_block = sb_bread(sb, info->index_block);
 	if (index_block == NULL) {
-		pr_err("Error: sb_bread for index_block in read v1\n");
+		pr_err("Error: sb_bread for index_block in read v2\n");
 		return -EIO;
 	}
 	index = (struct ouichefs_file_index_block *)index_block->b_data;

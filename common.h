@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+
 #ifndef _COMMON_H
 #define _COMMON_H
 
@@ -17,7 +19,7 @@
 
 /**
  * Get block where pos is located
-*/
-void get_first_blk(size_t, uint32_t *, loff_t , size_t *, size_t *);
+ */
+void get_first_blk(size_t, uint32_t *, loff_t, size_t *, size_t *);
 
 #endif /* COMMON_H */

@@ -35,7 +35,7 @@ static int file_info(struct file *file, char *buf)
 	// Get index bloc
 	index_block = sb_bread(sb, info->index_block);
 	if (index_block == NULL) {
-		pr_err("Error: sb_bread for index_block in read v1\n");
+		pr_err("Error: sb_bread for index_block in ioctl\n");
 		return -EIO;
 	}
 
