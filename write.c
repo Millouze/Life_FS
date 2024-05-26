@@ -271,7 +271,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 				inode->i_blocks++;
 				brelse(split_bh);
 				brelse(bh);
-				first_blk++;
 			}
 		}
 	}
@@ -293,6 +292,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 
 	if (*pos == 0)
 		first_blk = -1;
+
 	for (int i = inode->i_blocks - 2; i > first_blk; i--)
 		index->blocks[i + nb_blk_alloc] = index->blocks[i];
 
@@ -313,7 +313,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 
 	for (int i = 0; i < nb_blk_alloc && sz_left > 0; i++) {
 		uint32_t num_blk = index->blocks[first_blk + i + 1];
-		
+
 		bh = sb_bread(inode->i_sb, num_blk & BLK_NUM);
 		if (!bh) {
 			pr_err("Error sb_bread on block %u\n", num_blk);
