@@ -127,10 +127,14 @@ int ouich_defrag(struct file *file)
 			}
 
 			for (int j = i + 1;
-			(j <= (inode->i_blocks - 2)) && (!blk_fullA); j++) {
+			     (j <= (inode->i_blocks - 2)) && (!blk_fullA);
+			     j++) {
 				blk_numB = GET_BLK_NUM(index->blocks[j]);
 				blk_szB = GET_BLK_SIZE(index->blocks[j]);
 				blk_fullB = (GET_BLK_FULL(index->blocks[j]));
+				if (blk_fullB) {
+					blk_szB = OUICHEFS_BLOCK_SIZE;
+				}
 				bhB = sb_bread(sb, blk_numB);
 				if (bhB == NULL) {
 					pr_err("Error: sb_bread bhB in defrag IOCTL\n");
@@ -140,7 +144,7 @@ int ouich_defrag(struct file *file)
 				}
 				ponction = min(4096 - blk_szA, blk_szB);
 				memcpy(bhA->b_data + blk_szA, bhB->b_data,
-				ponction);
+				       ponction);
 				blk_szA += ponction;
 				if (blk_szA == 4096)
 					blk_fullA = BLK_FULL;
@@ -148,15 +152,15 @@ int ouich_defrag(struct file *file)
 					blk_fullA |
 					((blk_szA << 19) & BLK_SIZE) | blk_numA;
 				if (ponction == blk_szB) {
-					//On a vidé le bloc B
+					//Block B shoul be empty
 					blk_szB = 0;
 					index->blocks[j] = blk_numB;
 				} else {
-					//On doit déplacer le contenu du bloc B
+					//Remainder of block B data should be pulled at the start of b_data
 					memcpy(buf, bhB->b_data + ponction,
-					blk_szB - ponction);
-					memcpy(bhB->b_data, buf, blk_szB -
-					ponction);
+					       blk_szB - ponction);
+					memcpy(bhB->b_data, buf,
+					       blk_szB - ponction);
 					blk_szB -= ponction;
 					index->blocks[j] =
 						((blk_szB << 19) & BLK_SIZE) |
