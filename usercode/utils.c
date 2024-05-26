@@ -18,7 +18,6 @@ char *gen_string(size_t str_sz)
 		key = rand() % alpha_len;
 		rd_string[n] = alphabet[key];
 	}
-	rd_string[length] = '\0';
 
 	return rd_string;
 }

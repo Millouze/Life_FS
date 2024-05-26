@@ -12,14 +12,14 @@ int start_insertion(int fd, char *rd_str, size_t str_sz)
 
 	// Positionnement debut de fichier premiere ecriture
 	lseek(fd, 0, SEEK_SET);
-	if (write(fd, rd_str, str_sz) == 0) {
+	if (write(fd, rd_str, str_sz) != str_sz) {
 		dprintf(STDOUT_FILENO, "START_INSERTION : write error \n");
 		exit(EXIT_FAILURE);
 	}
 	printf("rd_str : %s \n", rd_str);
 	lseek(fd, 0, SEEK_SET);
-	if ((read(fd, res_str, str_sz) != 0) &&
-	    strncmp(rd_str, res_str, str_sz)) {
+	if ((read(fd, res_str, str_sz) != str_sz) &&
+	    strncmp(rd_str, res_str, str_sz) == 0) {
 		printf("res_str : %s \n", res_str);
 		dprintf(STDOUT_FILENO,
 			"First Write Successful in start_insertion \n");
@@ -34,7 +34,7 @@ int start_insertion(int fd, char *rd_str, size_t str_sz)
 	lseek(fd, 0, SEEK_SET);
 	char *nw_str = gen_string(str_sz);
 
-	if (write(fd, nw_str, str_sz) == 0) {
+	if (write(fd, nw_str, str_sz) != str_sz) {
 		dprintf(STDOUT_FILENO, "START_INSERTION : write error \n");
 		exit(EXIT_FAILURE);
 	}
@@ -42,7 +42,7 @@ int start_insertion(int fd, char *rd_str, size_t str_sz)
 	// Positionnement nouveau bloc alloue verif ecriture
 	lseek(fd, 4097, SEEK_SET);
 
-	if ((read(fd, res_str, str_sz) != 0) &&
+	if ((read(fd, res_str, str_sz) != str_sz) &&
 	    (strncmp(nw_str, res_str, str_sz) == 0)) {
 		goto TEST_BLK_SPLIT;
 	} else {
