@@ -3,10 +3,10 @@
 char *gen_string(size_t str_sz)
 {
 	char *alphabet =
-		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890&é@()ç-_$*^ù!:;";
-	size_t alpha_len = 77;
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+	size_t alpha_len = 62;
 	short key = 0;
-	uint length = rand() % 300;
+	uint length = rand() % str_sz;
 	char *rd_string = malloc(sizeof(char) * (length + 1));
 
 	if (!rd_string) {
