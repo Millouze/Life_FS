@@ -106,9 +106,6 @@ ssize_t write_v1(struct file *file, const char __user *buf, size_t sz,
 	// update inode
 	if (sz_write + *pos > inode->i_size)
 		inode->i_size = *pos + sz_write;
-	if (!(file->f_flags & O_NOATIME))
-		inode->i_mtime = inode->i_ctime = current_time(inode);
-	mark_inode_dirty(inode);
 
 	// update offset
 	*pos += sz_write;
@@ -121,6 +118,11 @@ free_index_block:
 	mark_buffer_dirty(index_block);
 	sync_dirty_buffer(index_block);
 	brelse(index_block);
+
+	if (!(file->f_flags & O_NOATIME))
+		inode->i_mtime = inode->i_ctime = current_time(inode);
+	mark_inode_dirty(inode);
+
 	return ret;
 }
 
@@ -359,9 +361,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	}
 	// update inode
 	inode->i_size += sz_write;
-	if (!(file->f_flags & O_NOATIME))
-		inode->i_mtime = inode->i_ctime = current_time(inode);
-	mark_inode_dirty(inode);
 
 	// update offset
 	*pos += sz_write;
@@ -376,5 +375,8 @@ free_index_block:
 	mark_buffer_dirty(index_block);
 	sync_dirty_buffer(index_block);
 	brelse(index_block);
+	if (!(file->f_flags & O_NOATIME))
+		inode->i_mtime = inode->i_ctime = current_time(inode);
+	mark_inode_dirty(inode);
 	return ret;
 }

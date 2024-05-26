@@ -3,13 +3,15 @@
 #include "ioctl.h"
 
 #include <linux/buffer_head.h>
+#include <linux/ioctl.h>
 
 #include "common.h"
 #include "ouichefs.h"
-#include "linux/ioctl.h"
+#include "defragmentation.h"
 
 #define OUICH_MAGIC_IOCTL 'N'
 #define OUICH_FILE_INFO _IOR(OUICH_MAGIC_IOCTL, 1, char *)
+#define OUICH_FILE_DEFRAG _IO(OUICH_MAGIC_IOCTL, 2)
 
 /**
  * Get file
@@ -62,8 +64,6 @@ static int file_info(struct file *file, char *buf)
 
 long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	pr_info("ouichefs ioctl :");
-
 	if (_IOC_TYPE(cmd) != OUICH_MAGIC_IOCTL) {
 		pr_err("Wrong magic number in ioctl\n");
 		return -EINVAL;
@@ -72,6 +72,10 @@ long ouichefs_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	switch (cmd) {
 	case OUICH_FILE_INFO:
 		file_info(file, (char *)arg);
+		break;
+
+	case OUICH_FILE_DEFRAG:
+		ouich_defrag(file);
 		break;
 
 	default:
