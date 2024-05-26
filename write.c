@@ -253,7 +253,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 					goto free_bh;
 				}
 				if (inode->i_blocks + 1 > 1025) {
-					// ToDo DEFRAG
 					pr_err("Error too many blocks for a single file\n");
 					return -ENOSPC;
 				}
@@ -272,7 +271,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 					ret = -EFAULT;
 					goto free_split_bh;
 				}
-				// TODO change
 				size_t split_num = (split_sz == 4096) ?
 				(BLK_FULL | GET_BLK_NUM(num_blk)) :
 				((0 << 31) | ((split_sz << 19) & BLK_SIZE) |
@@ -297,7 +295,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 		nb_blk_alloc++;
 
 	if (inode->i_blocks + nb_blk_alloc > 1025) {
-		// ToDo DEFRAG
 		pr_err("Error too many blocks for a single file\n");
 		return -ENOSPC;
 	}

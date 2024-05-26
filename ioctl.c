@@ -17,7 +17,6 @@
  * number of partially filled blocks
  * number of bytes wasted due to internal fragmentation
  * list of all used blocks with their number and effective size
- * TODO bloc info ???
  */
 static int file_info(struct file *file, char *buf)
 {

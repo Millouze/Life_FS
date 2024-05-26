@@ -19,8 +19,6 @@ ssize_t read_v1(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	// Flags managment
 	if (file->f_flags & O_WRONLY)
 		return -EPERM;
-	if (file->f_flags & O_APPEND)
-		*pos = inode->i_size;
 
 	// If read after EOF or nothing to read
 	if (inode->i_size < *pos || size == 0)
@@ -99,8 +97,6 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	// Flags managment
 	if (file->f_flags & O_WRONLY)
 		return -EPERM;
-	if (file->f_flags & O_APPEND)
-		*pos = inode->i_size;
 
 	// If read after EOF or nothing to read
 	if (inode->i_size < *pos || size == 0)
