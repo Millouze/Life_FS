@@ -8,6 +8,11 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <sys/ioctl.h>
+
+#define OUICH_MAGIC_IOCTL 'N'
+#define OUICH_FILE_INFO _IOR(OUICH_MAGIC_IOCTL, 1, char *)
+#define OUICH_FILE_DEFRAG _IO(OUICH_MAGIC_IOCTL, 2)
 
 #define FILE_MAXOFFSET 4194304
 #define BLK_SIZE 4096
