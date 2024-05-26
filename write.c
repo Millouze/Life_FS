@@ -163,13 +163,18 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	// Get the number of bloc to create
 	// if we have paddoing blocks
 	if (*pos > inode->i_size) {
+		pr_info("pos %lld\n", *pos);
 		size_t nb_blk_alloc = 0;
 		// Get the number of bloc to create
 		sz_write_padding = *pos - inode->i_size;
-
 		nb_blk_alloc = sz_write_padding / OUICHEFS_BLOCK_SIZE;
 		if ((sz_write_padding % OUICHEFS_BLOCK_SIZE) != 0)
 			nb_blk_alloc++;
+
+		if (inode->i_blocks + nb_blk_alloc > 1025) {
+			pr_err("Error too many blocks for a single file\n");
+			return -ENOSPC;
+		}
 
 		if (nb_blk_alloc > sbi->nr_free_blocks) {
 			pr_err("Error no free_blocks\n");
@@ -187,7 +192,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 				goto free_index_block;
 			}
 			num_blk |= BLK_FULL;
-			index->blocks[inode->i_blocks - 2] = num_blk;
+			index->blocks[inode->i_blocks - 1] = num_blk;
 			inode->i_blocks++;
 		}
 
@@ -205,7 +210,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 		num_block |= (blk_size == 0) ? BLK_FULL : ((*pos - 1) % 4096) << 19;
 
 		index->blocks[inode->i_blocks - 1] = num_block;
-		first_blk = inode->i_blocks;
+		first_blk = inode->i_blocks - 1;
 		inode->i_blocks++;
 	} else {
 		// If pos < file size: split in two the block

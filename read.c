@@ -122,7 +122,7 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	size_t bg_off = (*pos - sz_read);
 
 	sz_read = 0;
-	
+
 	// loop until i_blocks - 1 bc index_bloc count but is not in the array
 	for (int i = bg_blk; i < inode->i_blocks - 1 && sz_left > 0; i++) {
 		// Get block to read
@@ -135,18 +135,17 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 			return -EIO;
 		}
 
-
 		size_t sz_max = GET_SIZE(num_blk) - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
 		if (sz_cpy == 0)
 			continue;
+		
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v2\n");
 			brelse(bh);
 			brelse(index_block);
 			return -EFAULT;
 		}
-
 		// update variable
 		sz_left -= sz_cpy;
 		sz_read += sz_cpy;
