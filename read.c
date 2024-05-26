@@ -93,7 +93,7 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	struct inode *inode = file->f_inode;
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
-	struct buffer_head *index_block
+	struct buffer_head *index_block;
 	struct ouichefs_file_index_block *index;
 
 	// Flags managment

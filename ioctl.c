@@ -28,7 +28,7 @@ static int file_info(struct file *file, char *buf)
 	struct ouichefs_inode_info *info = OUICHEFS_INODE(inode);
 	struct super_block *sb = inode->i_sb;
 	struct ouichefs_file_index_block *index;
-	struct buffer_head *index_block
+	struct buffer_head *index_block;
 	size_t bytes_wasted = 0;
 
 	// Get index bloc
