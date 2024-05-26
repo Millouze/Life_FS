@@ -150,9 +150,6 @@ int main()
 
 	struct timespec begin = get_time();
 
-	/*Writing the data starting at offset */
-	off_t insert_off = lseek(fd1, 2048, SEEK_SET);
-
 	char buf[BUFSIZ];
 
 	int readsiz;

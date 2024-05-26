@@ -210,7 +210,6 @@ int main(int argc, char *argv[])
 	int fd2 = open("test2", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	int fd3 = open("test3", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	int fd4 = open("test4", O_CREAT | O_RDWR | O_TRUNC, 0664);
-	int fd5 = open("test5", O_CREAT | O_RDWR | O_TRUNC, 0664);
 	srand(time(NULL));
 	char *rd_str = gen_string(10);
 	start_insertion(fd1, rd_str, 10);
