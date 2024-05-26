@@ -152,7 +152,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	pr_info("size %llu\n", inode->i_blocks);
 	size_t sz_read = 0;
 	size_t bg_off = 0;
-	size_t first_blk = -1;
+	ssize_t first_blk = -1;
 	struct buffer_head *bh;
 	struct buffer_head *split_bh;
 	// Get the number of bloc to create
@@ -279,6 +279,9 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 	pr_info("---first_blk%ld \n", first_blk);
 	pr_info("---nb_blk_alloc %lu \n", nb_blk_alloc);
 
+	if (*pos == 0) {
+		first_blk = -1;
+	}
 	for (int i = inode->i_blocks - 2; i > first_blk; i--) {
 		pr_info("Debug: Loop iteration, i = %d, first_blk = %ld\n", i, first_blk);
 		index->blocks[i + nb_blk_alloc] = index->blocks[i];
