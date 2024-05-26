@@ -2,6 +2,7 @@
 
 #include "read.h"
 
+#include "linux/printk.h"
 #include <linux/buffer_head.h>
 
 #include "common.h"
@@ -121,8 +122,9 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	size_t bg_off = (*pos - sz_read);
 
 	sz_read = 0;
+	
 	// loop until i_blocks - 1 bc index_bloc count but is not in the array
-	for (int i = bg_off; i < inode->i_blocks - 1 && sz_left > 0; i++) {
+	for (int i = bg_blk; i < inode->i_blocks - 1 && sz_left > 0; i++) {
 		// Get block to read
 		uint32_t num_blk = index->blocks[i];
 		struct buffer_head *bh = sb_bread(sb, GET_BLK_NUM(num_blk));
@@ -133,9 +135,9 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 			return -EIO;
 		}
 
+
 		size_t sz_max = GET_SIZE(num_blk) - bg_off;
 		size_t sz_cpy = min(sz_left, sz_max);
-
 		if (sz_cpy == 0)
 			continue;
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
