@@ -15,6 +15,9 @@
 
 #include "ouichefs.h"
 #include "bitmap.h"
+#include "ioctl.h"
+#include "write.h"
+#include "read.h"
 
 /*
  * Map the buffer_head passed in argument with the iblock-th block of the file
@@ -190,7 +193,8 @@ const struct address_space_operations ouichefs_aops = {
 	.write_end = ouichefs_write_end
 };
 
-static int ouichefs_open(struct inode *inode, struct file *file) {
+static int ouichefs_open(struct inode *inode, struct file *file)
+{
 	bool wronly = (file->f_flags & O_WRONLY) != 0;
 	bool rdwr = (file->f_flags & O_RDWR) != 0;
 	bool trunc = (file->f_flags & O_TRUNC) != 0;
@@ -214,17 +218,20 @@ static int ouichefs_open(struct inode *inode, struct file *file) {
 			index->blocks[iblock] = 0;
 		}
 		inode->i_size = 0;
-		inode->i_blocks = 0;
+		inode->i_blocks = 1;
 
 		brelse(bh_index);
 	}
-	
+
 	return 0;
 }
 
 const struct file_operations ouichefs_file_ops = {
 	.owner = THIS_MODULE,
 	.open = ouichefs_open,
+	.read = read_v2,
+	.write = write_v2,
+	.unlocked_ioctl = ouichefs_ioctl,
 	.llseek = generic_file_llseek,
 	.read_iter = generic_file_read_iter,
 	.write_iter = generic_file_write_iter
