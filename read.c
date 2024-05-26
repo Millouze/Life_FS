@@ -114,12 +114,10 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 	size_t sz_left = size;
 	ssize_t bg_blk = 0;
 
-	get_first_blk(inode->i_blocks, index->blocks, *pos, &sz_read, &bg_blk);
-	if (bg_blk == -1) {
-		pr_err("Error: Invalid value for first_blk in read v2\n");
-		brelse(index_block);
-		return -EFAULT;
-	}
+	get_first_blk(inode->i_blocks, index->blocks, *pos, &bg_blk, &sz_read);
+	if (bg_blk == -1)
+		bg_blk = 0;
+
 	size_t bg_off = (*pos - sz_read);
 
 	sz_read = 0;
@@ -140,7 +138,6 @@ ssize_t read_v2(struct file *file, char __user *buf, size_t size, loff_t *pos)
 
 		if (sz_cpy == 0)
 			continue;
-
 		if (copy_to_user(buf + sz_read, bh->b_data + bg_off, sz_cpy)) {
 			pr_err("Error: copy_to_user failed in read v2\n");
 			brelse(bh);

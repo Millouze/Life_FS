@@ -313,7 +313,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 
 	for (int i = 0; i < nb_blk_alloc && sz_left > 0; i++) {
 		uint32_t num_blk = index->blocks[first_blk + i + 1];
-
+		
 		bh = sb_bread(inode->i_sb, num_blk & BLK_NUM);
 		if (!bh) {
 			pr_err("Error sb_bread on block %u\n", num_blk);
@@ -322,7 +322,7 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 		}
 		size_t sz_cpy = min(bh->b_size, sz_left);
 
-		if (copy_from_user(bh->b_data + bg_off, buf + sz_write, sz_cpy)) {
+		if (copy_from_user(bh->b_data, buf + sz_write, sz_cpy)) {
 			pr_err("Error: copy_from_user failed in write v2 fun\n");
 			brelse(bh);
 			brelse(index_block);
@@ -330,7 +330,6 @@ ssize_t write_v2(struct file *file, const char __user *buf, size_t size,
 		}
 		sz_left -= sz_cpy;
 		sz_write += sz_cpy;
-		bg_off++;
 		index->blocks[first_blk + i + 1] = (sz_cpy == 4096) ?
 			index->blocks[first_blk + i + 1] | BLK_FULL :
 			index->blocks[first_blk + i + 1] | ((sz_cpy << 19) & BLK_SIZE);
